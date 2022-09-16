@@ -1,0 +1,325 @@
+---
+title: "TFM_MPRE"
+output: html_document
+---
+
+Análisis de datos de trabajo TFM, MPRE (VIU).
+
+# Cargar librerías
+```{r}
+library(tidyverse)
+library(dplyr)
+library(likert)
+library(psych)
+library(ggstatsplot)
+library(ggplot2)
+
+```
+
+# Cargar directorio de datos y de resultados
+```{r}
+wd_input <- "/Users/marialucenaperez/Desktop/master_viu/TFM/analisis/datos/"
+wd_output <- "/Users/marialucenaperez/Desktop/master_viu/TFM/analisis/resultados/"
+```
+
+# Cargar datos
+```{r setup, include=FALSE}
+# Cargo la tabla de resultados
+resp_pre <- read.table(paste (wd_input, "Cuestionario_investigacion.csv", sep=""), sep=",", fileEncoding ="UTF-8", header=T) 
+
+# Realizo cambios menores en la tabla para facilitar su análisis.
+resp <- resp_pre %>% 
+  dplyr::select (., -1, -X) %>%
+  dplyr::rename (.,"Edad"="Edad..en.número.",
+         "Orientacion_sexual"="Orientación.sexual", 
+         "En alguna parte hay alguien predestinado para cada persona tu media naranja" = "En.alguna.parte.hay.alguien.predestinado.para.cada.persona...tu.media.naranja..",
+         "La pasión intensa de los primeros tiempos de una relación debería durar siempre" = "La.pasión.intensa.de.los.primeros.tiempos.de.una.relación.debería.durar.siempre",
+         "El amor es ciego" = "El.amor.es.ciego.",
+         "El amor verdadero lo puede todo" = "El.amor.verdadero.lo.puede.todo",
+         "El matrimonio es la tumba del amor (inverso)" = "El.matrimonio.es.la.tumba.del.amor.",
+         "Se puede ser feliz sin tener una relación de pareja (inverso)" = "Se.puede.ser.feliz.sin.tener.una.relación.de.pareja.",
+         "Separarse o divorciarse es un fracaso" = "Separarse.o.divorciarse.es.un.fracaso.",
+         "Los celos son una prueba de amor" = "Los.celos.son.una.prueba.de.amor",
+         "Se puede amar a alguien a quien se maltrata" = "Se.puede.amar.a.alguien.a.quien.se.maltrata.",
+         "Se puede maltratar a alguien a quien se ama" = "Se.puede.maltratar.a.alguien.a.quien.se.ama",
+         "Los niños deben preferir jugar con camiones en vez de jugar con muñecas" = "Los.niños.deben.preferir.jugar.con.camiones.en.vez.de.jugar.con.muñecas",
+         "Los niños no deben lanzar una pelota como las niñas"="Los.niños.no.deben.lanzar.una.pelota.como.las.niñas" ,
+         "Un hombre debe evitar en todo momento llevar el bolso de su esposa"= "Un.hombre.debe.evitar.en.todo.momento.llevar.el.bolso.de.su.esposa",
+         "Un hombre no debe continuar la amistad con otro hombre si descubre que éste es homosexual" = "Un.hombre.no.debe.continuar.la.amistad.con.otro.hombre.si.descubre.que.éste.es.homosexual",
+         "Hay ciertos temas que los hombres no deben hablar con otros hombres" = "Hay.ciertos.temas.que.los.hombres.no.deben.hablar.con.otros.hombres",
+         "Es decepcionante enterarse que un atleta famoso es homosexual" = "Es.decepcionante.enterarse.que.un.atleta.famoso.es.homosexual",
+         "Un hombre debe levantarse para investigar cuándo hay un ruido extraño en la casa durante la noche" = "Un.hombre.debe.levantarse.para.investigar.cuándo.hay.un.ruido.extraño.en.la.casa.durante.la.noche",
+         "Es importante para un hombre asumir riesgos aunque pueda ser herido" = "Es.importante.para.un.hombre.asumir.riesgos.aunque.pueda.ser.herido",
+         "Un hombre debe ser fuerte en los momentos difíciles" = "Un.hombre.debe.ser.fuerte.en.los.momentos.difíciles",
+         "En un grupo le corresponde a los hombres organizar las cosas y llevar la iniciativa" = "En.un.grupo..le.corresponde.a.los.hombres.organizar.las.cosas.y.llevar.la.iniciativa",
+         "Un hombre debe hacer lo que sea para ser admirado y respetado" = "Un.hombre.debe.hacer.lo.que.sea.para.ser.admirado.y.respetado",
+         "Está bien que un hombre compre un carro coche deportivo si lo desea aunque se sobrepase en su presupuesto" = "Está.bien.que.un.hombre.compre.un.carro.coche.deportivo.si.lo.desea..aunque.se.sobrepase.en.su.presupuesto",
+         "Un hombre debe ser siempre el proveedor principal en su familia" = "Un.hombre.debe.ser.siempre.el.proveedor.principal.en.su.familia",
+         "En situaciones que involucran dinero la decisión final le corresponde a los hombres" = "En.situaciones.que.involucran.dinero..la.decisión.final.le.corresponde.a.los.hombres",
+         "Para un hombre las caricias son el primer paso hacia el sexo" = "Para.un.hombre.las.caricias.son.el.primer.paso.hacia.el.sexo",
+         "Abrazar y besar deben llevar siempre a la penetración" = "Abrazar.y.besar.deben.llevar.siempre.a.la.penetración",
+         "No vale la pena tener sexo a menos que pueda alcanzar un orgasmo" = "No.vale.la.pena.tener.sexo.a.menos.que.pueda.alcanzar.un.orgasmo" ) %>%
+  dplyr::mutate (sujeto= 1:n()) 
+
+
+# Revertimos las columnas que las respuestas son inversas.
+cols = c("El matrimonio es la tumba del amor (inverso)", "Se puede ser feliz sin tener una relación de pareja (inverso)")
+resp[ ,cols] = 6 - resp[ ,cols]
+
+# Elimino la tabla en brutos.
+rm (resp_pre)
+```
+
+# Explorar datos
+## Sexo
+```{r}
+# Calculo número de hombres y mujeres y hago plot.
+table (resp$Sexo)
+dev.off()
+sex_ratio <- tab1(resp$Sexo, sort.group = "decreasing", cum.percent = TRUE, missing = FALSE)
+write.csv(sex_ratio$output.table, file=paste (wd_output, "sex_ratio.csv", sep="")) 
+
+ggplot(data= resp, aes(Sexo, color=Sexo, fill=Sexo)) + 
+  geom_histogram(stat="count") +
+  theme_minimal() +
+  theme(legend.position="none") +
+  ggsave (paste(wd_output,"sex_ratio.pdf", sep=""), width = 7, height = 7)
+
+```
+
+## Edad
+```{r}
+# Calculo distribucio y media edad y hago plot.
+table (resp$Edad)
+dev.off()
+edad_ratio <- tab1(resp$Edad, sort.group = "decreasing", cum.percent = TRUE, missing = FALSE)
+write.csv(edad_ratio$output.table, file=paste (wd_output, "edad_ratio.csv", sep="")) 
+
+resp %>% summarise(mean_age = mean(Edad))
+
+ggplot(data= resp, aes(Edad, color=Edad, fill=Edad)) + 
+  geom_histogram(stat="count") +
+  theme_minimal() +
+  theme(legend.position="none") +
+  ggsave (paste(wd_output,"edad_ratio.pdf", sep=""), width = 7, height = 7)
+
+```
+
+## Orientacion
+```{r}
+# Distribución de orientación sexual por sexo y plot.
+table (resp$Orientacion_sexual)
+dev.off()
+orientacion_ratio <- tab1(resp$Orientacion_sexual, sort.group = "decreasing", cum.percent = TRUE, missing = FALSE)
+write.csv(orientacion_ratio$output.table, file=paste (wd_output, "orientacion_ratio.csv", sep="")) 
+
+resp %>%
+  group_by(Sexo, Orientacion_sexual) %>%
+  summarise(n = n()) %>%
+  mutate(prop = (n / sum(n))*100)
+
+ggplot(data= resp, aes(Orientacion_sexual, color=Orientacion_sexual, fill=Orientacion_sexual)) + 
+  geom_histogram(stat="count") +
+  theme_minimal() +
+  theme(legend.position="none") +
+  ggsave (paste(wd_output,"orientacion_ratio.pdf", sep=""), width = 7, height = 7)
+
+ggplot(data = resp %>% 
+         dplyr::select (Orientacion_sexual, Sexo) %>%
+         group_by(Orientacion_sexual, Sexo) %>% 
+         count(), 
+       aes(x=Orientacion_sexual, y=n, color=Sexo, fill=Sexo)) + 
+  geom_histogram(stat="identity", position="dodge") +
+  theme_minimal() +
+  ggsave (paste(wd_output,"orientacion_ratio_by_sex.pdf", sep=""), width = 7, height = 7)
+```
+
+# Validación alpha de Cronbach.
+
+```{r}
+# Calculamos Alpha
+a_global <- resp %>% 
+  dplyr::select (-Edad, -Sexo, -Orientacion_sexual, -sujeto) %>% 
+  psych::alpha(., check.keys = T) 
+
+write.table(a_global$item.stats, file = paste(wd_output,"alpha_global_stats.txt", sep=""), dec=",", sep="\t", quote = F, row.names = F)
+write.table(a_global$total, file = paste(wd_output,"alpha_global_total.txt", sep=""), dec=",", sep="\t", quote = F, row.names = F)
+
+# Calculamos Alpha para las dos tablas por separado.
+a_amor <- resp %>% 
+  dplyr::select (c(4:13)) %>% 
+  psych::alpha(., check.keys = T)  
+
+write.table(a_amor$item.stats, file = paste(wd_output,"alpha_amor_stas.txt", sep=""), dec=",", sep="\t", quote = F, row.names = F)
+write.table(a_amor$total, file = paste(wd_output,"alpha_amor_total.txt", sep=""), dec=",", sep="\t", quote = F, row.names = F)
+
+a_masc <- resp %>% 
+   dplyr::select (c(14:30)) %>% 
+   psych::alpha(., check.keys = T)  
+
+write.table(a_masc$item.stats, file = paste(wd_output,"alpha_masc_stats.txt", sep=""), dec=",", sep="\t", quote = F, row.names = F)
+write.table(a_masc$total, file = paste(wd_output,"alpha_masc_total.txt", sep=""), dec=",", sep="\t", quote = F, row.names = F)
+```
+
+# Analisis resultados likert 
+
+## Estadística descriptiva
+```{r}
+# Asignamos clase factor y sus distintos niveles a las escalas likert para su analisis.
+lvls <- c(1,2,3,4,5)
+resp[4:30] <- lapply(resp[4:30], factor, levels=lvls)
+
+# Tabla con los resultados generales
+likert(resp[,c(4:30)]) %>% 
+  summary () %>% 
+  write.table (., paste(wd_output, "summary_likert.txt", sep=""), dec=",", sep="\t", quote = F, row.names = F)
+      
+# Tabla con los resultados por sexo
+likert(resp[,c(4:30)], grouping = resp$Sexo) %>% 
+   summary () %>% 
+   write.table (., paste(wd_output, "summary_likert_por_sexo.txt", sep=""), dec=",", sep="\t", quote = F, row.names = F)
+
+# Plot mitos de amor romantico
+pdf(file=paste(wd_output, "likert_amor.pdf", sep=""))
+plot(likert(resp[,c(4:13)]),
+     type="bar")+
+  ylab("Porcentaje") +
+  guides(fill = guide_legend(title="Respuesta", reverse = FALSE))
+while (!is.null(dev.list()))  dev.off()
+
+# Plot mitos de amor romantico por sexo
+pdf(file=paste(wd_output, "likert_amor_por_sexo.pdf", sep=""), height=10)
+plot(likert(resp[,c(4:13)], 
+            grouping = resp[,c(2:2)]), 
+     type="bar") +
+  ylab("Porcentaje") +
+  guides(fill = guide_legend(title="Respuesta", reverse = FALSE))
+while (!is.null(dev.list()))  dev.off()
+
+# Plot masculinidad hegemónica
+pdf(file=paste(wd_output, "likert_masc.pdf", sep=""))
+plot(likert(resp[,c(14:30)]),
+     type="bar") +
+  ylab("Porcentaje") +
+  guides(fill = guide_legend(title="Respuesta", reverse = FALSE))
+while (!is.null(dev.list()))  dev.off()
+
+# Plot masculinidad hegemónica por sexo
+pdf(file=paste(wd_output, "likert_masc_por_sexo.pdf", sep=""), width = 7, height = 16)
+plot(likert(resp[,c(14:30)], 
+            grouping = resp[,c(2:2)]), 
+     type="bar") +
+  ylab("Porcentaje") +
+  guides(fill = guide_legend(title="Respuesta", reverse = FALSE))
+while (!is.null(dev.list()))  dev.off()
+
+```
+
+## Análisis wilcox por sexo
+```{r}
+MITO_AMOR = c("En alguna parte hay alguien predestinado para cada persona tu media naranja"  , "La pasión intensa de los primeros tiempos de una relación debería durar siempre"  , "El amor es ciego"  , "El amor verdadero lo puede todo"  , "El matrimonio es la tumba del amor (inverso)"  , "Se puede ser feliz sin tener una relación de pareja (inverso)"  , "Separarse o divorciarse es un fracaso"  , "Los celos son una prueba de amor"  , "Se puede amar a alguien a quien se maltrata"  , "Se puede maltratar a alguien a quien se ama") 
+
+resp_gathered <- tidyr::gather (resp, "Item", "Respuesta", 4:30) %>% 
+  dplyr::mutate (TIPO_ITEM = ifelse (Item %in% MITO_AMOR, "amor", "masculinidad")) %>% 
+  dplyr::mutate (Respuesta= as.numeric (Respuesta))
+
+# Mitos del amor
+wilcox.test(as.numeric(Respuesta)~Sexo, data=resp_gathered %>% dplyr::filter (TIPO_ITEM=="amor"), conf.int = TRUE)
+# data:  as.numeric(Respuesta) by Sexo
+# W = 35352, p-value = 0.2197
+# alternative hypothesis: true location shift is not equal to 0
+# 95 percent confidence interval:
+#  -5.278905e-05  3.234021e-05
+# sample estimates:
+# difference in location 
+#           3.618098e-05 
+
+wilcox.test(as.numeric(Respuesta)~Sexo, data=resp_gathered %>% dplyr::filter (TIPO_ITEM=="amor"), conf.int = TRUE, alternative = "greater")
+# data:  as.numeric(Respuesta) by Sexo
+# W = 35352, p-value = 0.1098
+# alternative hypothesis: true location shift is greater than 0
+# 95 percent confidence interval:
+#  -8.229904e-05           Inf
+# sample estimates:
+# difference in location 
+#           3.618098e-05 
+
+# Plot resltados wilcox
+plot_amor <- ggbetweenstats( 
+  data = resp_gathered %>% dplyr::filter (TIPO_ITEM=="amor"),
+  x = Sexo,
+  y = Respuesta,
+  ggtheme = ggplot2::theme_minimal(),
+  plot.type = "box", # for boxplot
+  type = "nonparametric", # for wilcoxon
+  #centrality.plotting = FALSE # remove median
+)
+ggplot2::ggsave(filename=paste(wd_output, "likert_amor_by_sex_boxplot.pdf", sep=""), plot=plot_amor, width = 6, height = 6)
+
+## Masculinidad
+wilcox.test(as.numeric(Respuesta)~Sexo, data=resp_gathered %>% dplyr::filter (TIPO_ITEM=="masculinidad"), conf.int = TRUE)
+# data:  as.numeric(Respuesta) by Sexo
+# W = 113706, p-value = 3.328e-07
+# alternative hypothesis: true location shift is not equal to 0
+# 95 percent confidence interval:
+#  6.932866e-05 4.337294e-05
+# sample estimates:
+# difference in location 
+#           2.876027e-05 
+
+wilcox.test(as.numeric(Respuesta)~Sexo, data=resp_gathered %>% dplyr::filter (TIPO_ITEM=="masculinidad"), conf.int = TRUE, alternative = "greater")
+# data:  as.numeric(Respuesta) by Sexo
+# W = 113706, p-value = 1.664e-07
+# alternative hypothesis: true location shift is greater than 0
+# 95 percent confidence interval:
+#  2.029487e-05          Inf
+# sample estimates:
+# difference in location 
+#           2.876027e-05 
+
+# Plot resltados wilcox
+plot_masc <- ggbetweenstats( 
+  data = resp_gathered %>% dplyr::filter (TIPO_ITEM=="masculinidad"),
+  x = Sexo,
+  y = Respuesta,
+  ggtheme = ggplot2::theme_minimal(),
+  plot.type = "box", # for boxplot
+  type = "nonparametric", # for wilcoxon
+  #centrality.plotting = FALSE # remove median
+)
+ggplot2::ggsave(filename=paste(wd_output, "likert_masc_by_sex_boxplot.pdf", sep=""), plot=plot_masc, width = 6, height = 6)
+
+```
+
+# Correlación
+```{r}
+resp_gathered_correlation <- resp_gathered %>% 
+  group_by(sujeto, Sexo, TIPO_ITEM) %>% 
+  summarise(suma_respuesta=sum(Respuesta)) %>% 
+  spread(TIPO_ITEM, suma_respuesta)
+
+shapiro.test(x=resp_gathered_correlation$amor)
+shapiro.test(x=resp_gathered_correlation$masculinidad)
+
+cor.test(resp_gathered_correlation$amor, resp_gathered_correlation$masculinidad, method=c("spearman"))
+#Spearman's rank correlation rho
+# data:  resp_gathered_correlation$amor and resp_gathered_correlation$masculinidad
+# S = 12640, p-value = 1.764e-05
+# alternative hypothesis: true rho is not equal to 0
+# sample estimates:
+#       rho 
+# 0.5440149 
+
+plot_corr <- ggscatterstats(
+   data  = resp_gathered_correlation,
+  x     = amor,
+  y     = masculinidad,
+ ggtheme = ggplot2::theme_minimal() %+replace%
+    theme(axis.text.x =element_text(angle=60)),
+ type = "non parametric"
+ )
+ggplot2::ggsave(filename=paste(wd_output, "corr_amor_masc.pdf", sep=""), plot=plot_corr, width = 6, height = 6)
+
+
+```
+
